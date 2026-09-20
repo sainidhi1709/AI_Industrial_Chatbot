@@ -22,14 +22,28 @@ st.write("Ask questions about the industrial safety document.")
 # Load FAISS Index
 # -------------------------------
 
-index = faiss.read_index("data/industrial.index")
+import os
+
+index_path = os.path.join(
+    os.path.dirname(__file__),
+    "data",
+    "industrial.index"
+)
+
+index = faiss.read_index(index_path)
 
 
 # -------------------------------
 # Load Document Chunks
 # -------------------------------
+chunks_path = os.path.join(
+    os.path.dirname(__file__),
+    "data",
+    "chunks.pkl"
+)
 
-with open("data/chunks.pkl", "rb") as f:
+with open(chunks_path, "rb") as f:
+
     chunks = pickle.load(f)
 
 
