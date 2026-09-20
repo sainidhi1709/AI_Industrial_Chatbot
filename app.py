@@ -26,7 +26,7 @@ import os
 
 index_path = os.path.join(
     os.path.dirname(__file__),
-    "data",
+    
     "industrial.index"
 )
 
@@ -38,7 +38,7 @@ index = faiss.read_index(index_path)
 # -------------------------------
 chunks_path = os.path.join(
     os.path.dirname(__file__),
-    "data",
+    
     "chunks.pkl"
 )
 
