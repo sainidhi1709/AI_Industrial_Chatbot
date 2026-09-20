@@ -23,15 +23,8 @@ st.write("Ask questions about the industrial safety document.")
 
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-INDEX_PATH = os.path.join(
-    BASE_PATH,
-    "industrial.index"
-)
-
-CHUNKS_PATH = os.path.join(
-    BASE_PATH,
-    "chunks.pkl"
-)
+INDEX_PATH = os.path.join(BASE_PATH, "industrial.index")
+CHUNKS_PATH = os.path.join(BASE_PATH, "chunks.pkl")
 
 # -----------------------------
 # Load FAISS Index
@@ -60,9 +53,7 @@ embedding_model = SentenceTransformer(
 
 model_name = "google/flan-t5-small"
 
-tokenizer = AutoTokenizer.from_pretrained(
-    model_name
-)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 llm = AutoModelForSeq2SeqLM.from_pretrained(
     model_name,
@@ -92,46 +83,23 @@ if st.button("Get Answer"):
 
     else:
 
-        # Convert question into embedding
-        question_embedding = embedding_model.encode(
-            [question],
-            convert_to_numpy=True
-        )
-
-        # Search FAISS
-        distance, result = index.search(
-            question_embedding,
-            2
-        )
-
-        # Get retrieved document information
-        best_chunk = "\n\n".join(
-            chunks[i] for i in result[0]
-        )
-
-        # -----------------------------
-        # Display Retrieved Information
-        # -----------------------------
-
-        st.subheader("📄 Retrieved Information")
-        st.write(best_chunk)
-
-        # -----------------------------
-        # Check Question
-        # -----------------------------
-
         question_lower = question.lower()
+
+        # -----------------------------
+        # Check if question is related
+        # -----------------------------
 
         industrial_keywords = [
             "machine",
             "safety",
             "ppe",
+            "protective equipment",
             "protective",
             "helmet",
             "gloves",
             "glasses",
             "footwear",
-            "hearing",
+            "hearing protection",
             "emergency",
             "maintenance",
             "cleaning",
@@ -139,10 +107,14 @@ if st.button("Get Answer"):
             "workers",
             "operating",
             "operate",
+            "machine guard",
+            "machine guards",
             "guard",
             "guards",
             "hazard",
-            "equipment"
+            "equipment",
+            "safety rules",
+            "general safety"
         ]
 
         is_relevant = any(
@@ -151,96 +123,140 @@ if st.button("Get Answer"):
         )
 
         # -----------------------------
-        # Generate Answer
+        # WRONG / UNRELATED QUESTION
         # -----------------------------
 
         if not is_relevant:
 
-            answer = (
+            st.subheader("📄 Retrieved Information")
+            st.write(
+                "No relevant information found in the industrial documents."
+            )
+
+            st.subheader("🤖 Chatbot Answer")
+            st.write(
                 "Sorry, I couldn't find relevant information "
                 "about that in the provided industrial documents."
             )
 
-        elif (
-            "personal protective equipment" in question_lower
-            or "ppe" in question_lower
-            or "protective equipment" in question_lower
-        ):
-
-            answer = (
-                "Workers should use safety helmets, safety glasses, "
-                "protective footwear, gloves, and hearing protection "
-                "in high-noise areas."
-            )
-
-        elif (
-            "before starting" in question_lower
-            or "before operating" in question_lower
-            or "machine controls" in question_lower
-        ):
-
-            answer = (
-                "Workers should understand the machine controls "
-                "and operating procedure before operating the machine."
-            )
-
-        elif "emergency" in question_lower:
-
-            answer = (
-                "Workers should follow the emergency procedure "
-                "and use the appropriate emergency stop or safety measures."
-            )
-
-        elif (
-            "maintenance" in question_lower
-            or "cleaning" in question_lower
-        ):
-
-            answer = (
-                "Workers should follow proper safety procedures "
-                "during machine maintenance and cleaning."
-            )
-
-        elif (
-            "machine guard" in question_lower
-            or "machine guards" in question_lower
-            or "guard" in question_lower
-            or "guards" in question_lower
-        ):
-
-            answer = (
-                "Machine guards should be used to help protect workers "
-                "from moving machine parts and other hazards."
-            )
-
-        elif (
-            "safety rules" in question_lower
-            or "general safety" in question_lower
-        ):
-
-            answer = (
-                "Workers should follow machine safety procedures, "
-                "use required PPE, and keep the work area safe."
-            )
-
-        elif "safety" in question_lower:
-
-            answer = (
-                "Workers should follow the safety procedures "
-                "described in the industrial safety document."
-            )
+        # -----------------------------
+        # RELEVANT QUESTION
+        # -----------------------------
 
         else:
 
-            answer = (
-                "I found related information in the document, "
-                "but I could not generate a specific answer "
-                "for this question."
+            # Convert question into embedding
+            question_embedding = embedding_model.encode(
+                [question],
+                convert_to_numpy=True
             )
 
-        # -----------------------------
-        # Display Answer
-        # -----------------------------
+            # Search FAISS
+            distance, result = index.search(
+                question_embedding,
+                2
+            )
 
-        st.subheader("🤖 Chatbot Answer")
-        st.write(answer)
+            # Get relevant document information
+            best_chunk = "\n\n".join(
+                chunks[i] for i in result[0]
+            )
+
+            # -----------------------------
+            # Retrieved Information
+            # -----------------------------
+
+            st.subheader("📄 Retrieved Information")
+            st.write(best_chunk)
+
+            # -----------------------------
+            # Generate Answer
+            # -----------------------------
+
+            if (
+                "personal protective equipment" in question_lower
+                or "ppe" in question_lower
+                or "protective equipment" in question_lower
+            ):
+
+                answer = (
+                    "Workers should use safety helmets, safety glasses, "
+                    "protective footwear, gloves, and hearing protection "
+                    "in high-noise areas."
+                )
+
+            elif (
+                "before starting" in question_lower
+                or "before operating" in question_lower
+                or "machine controls" in question_lower
+            ):
+
+                answer = (
+                    "Workers should understand the machine controls "
+                    "and operating procedure before operating the machine."
+                )
+
+            elif "emergency" in question_lower:
+
+                answer = (
+                    "If an unsafe condition or emergency occurs, "
+                    "the operator should stop the machine using the "
+                    "appropriate emergency stop control when available "
+                    "and inform the responsible supervisor."
+                )
+
+            elif (
+                "maintenance" in question_lower
+                or "cleaning" in question_lower
+            ):
+
+                answer = (
+                    "Maintenance, cleaning, adjustment, and repair "
+                    "should be carried out using the approved procedure. "
+                    "The machine should be stopped and its energy sources "
+                    "isolated before maintenance."
+                )
+
+            elif (
+                "machine guard" in question_lower
+                or "machine guards" in question_lower
+                or "guard" in question_lower
+                or "guards" in question_lower
+            ):
+
+                answer = (
+                    "Safety guards should not be bypassed or removed "
+                    "during normal machine operation."
+                )
+
+            elif (
+                "safety rules" in question_lower
+                or "general safety" in question_lower
+            ):
+
+                answer = (
+                    "Workers should follow the manufacturer's operating "
+                    "instructions, use required safety equipment, and "
+                    "follow the machine safety procedures."
+                )
+
+            elif "safety" in question_lower:
+
+                answer = (
+                    "Workers should follow the safety procedures "
+                    "described in the industrial safety document."
+                )
+
+            else:
+
+                answer = (
+                    "I found relevant information in the industrial "
+                    "document, but I could not generate a specific answer."
+                )
+
+            # -----------------------------
+            # Chatbot Answer
+            # -----------------------------
+
+            st.subheader("🤖 Chatbot Answer")
+            st.write(answer)
