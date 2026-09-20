@@ -5,38 +5,45 @@ import pickle
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
+# -----------------------------
 # Page Settings
+# -----------------------------
+
 st.set_page_config(
     page_title="AI Industrial Chatbot",
     page_icon="🤖"
 )
 
 st.title("🤖 AI Industrial Chatbot")
-st.write("Ask questions about the industrial safety documents.")
+st.write("Ask questions about the industrial safety document.")
+
+# -----------------------------
+# File Paths
+# -----------------------------
+
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+INDEX_PATH = os.path.join(
+    BASE_PATH,
+    "industrial.index"
+)
+
+CHUNKS_PATH = os.path.join(
+    BASE_PATH,
+    "chunks.pkl"
+)
 
 # -----------------------------
 # Load FAISS Index
 # -----------------------------
 
-base_path = os.path.dirname(__file__)
-
-index_path = os.path.join(
-    base_path,
-    "industrial.index"
-)
-
-index = faiss.read_index(index_path)
+index = faiss.read_index(INDEX_PATH)
 
 # -----------------------------
 # Load Document Chunks
 # -----------------------------
 
-chunks_path = os.path.join(
-    base_path,
-    "chunks.pkl"
-)
-
-with open(chunks_path, "rb") as f:
+with open(CHUNKS_PATH, "rb") as f:
     chunks = pickle.load(f)
 
 # -----------------------------
@@ -79,7 +86,11 @@ question = st.text_input(
 
 if st.button("Get Answer"):
 
-    if question.strip():
+    if not question.strip():
+
+        st.warning("Please enter a question.")
+
+    else:
 
         # Convert question into embedding
         question_embedding = embedding_model.encode(
@@ -93,21 +104,25 @@ if st.button("Get Answer"):
             2
         )
 
-        # Similarity distance
-        best_distance = distance[0][0]
-
-        # Get relevant information
-        best_chunk = "\n".join(
+        # Get retrieved document information
+        best_chunk = "\n\n".join(
             chunks[i] for i in result[0]
         )
 
         # -----------------------------
-        # Check if question is relevant
+        # Display Retrieved Information
+        # -----------------------------
+
+        st.subheader("📄 Retrieved Information")
+        st.write(best_chunk)
+
+        # -----------------------------
+        # Check Question
         # -----------------------------
 
         question_lower = question.lower()
 
-        relevant_words = [
+        industrial_keywords = [
             "machine",
             "safety",
             "ppe",
@@ -124,19 +139,19 @@ if st.button("Get Answer"):
             "workers",
             "operating",
             "operate",
-            "machine guard",
-            "safety rules",
+            "guard",
+            "guards",
             "hazard",
             "equipment"
         ]
 
         is_relevant = any(
             word in question_lower
-            for word in relevant_words
+            for word in industrial_keywords
         )
 
         # -----------------------------
-        # Show answer
+        # Generate Answer
         # -----------------------------
 
         if not is_relevant:
@@ -146,7 +161,6 @@ if st.button("Get Answer"):
                 "about that in the provided industrial documents."
             )
 
-        # PPE question
         elif (
             "personal protective equipment" in question_lower
             or "ppe" in question_lower
@@ -159,12 +173,10 @@ if st.button("Get Answer"):
                 "in high-noise areas."
             )
 
-        # Machine operation
         elif (
             "before starting" in question_lower
             or "before operating" in question_lower
             or "machine controls" in question_lower
-            or "operate the machine" in question_lower
         ):
 
             answer = (
@@ -172,7 +184,6 @@ if st.button("Get Answer"):
                 "and operating procedure before operating the machine."
             )
 
-        # Emergency
         elif "emergency" in question_lower:
 
             answer = (
@@ -180,7 +191,6 @@ if st.button("Get Answer"):
                 "and use the appropriate emergency stop or safety measures."
             )
 
-        # Maintenance
         elif (
             "maintenance" in question_lower
             or "cleaning" in question_lower
@@ -191,21 +201,10 @@ if st.button("Get Answer"):
                 "during machine maintenance and cleaning."
             )
 
-        # General safety
         elif (
-            "safety rules" in question_lower
-            or "general safety" in question_lower
-            or "safety" in question_lower
-        ):
-
-            answer = (
-                "Workers should follow machine safety procedures, "
-                "use required PPE, and keep the work area safe."
-            )
-
-        # Machine guards
-        elif (
-            "guard" in question_lower
+            "machine guard" in question_lower
+            or "machine guards" in question_lower
+            or "guard" in question_lower
             or "guards" in question_lower
         ):
 
@@ -214,12 +213,28 @@ if st.button("Get Answer"):
                 "from moving machine parts and other hazards."
             )
 
-        # Other industrial questions
+        elif (
+            "safety rules" in question_lower
+            or "general safety" in question_lower
+        ):
+
+            answer = (
+                "Workers should follow machine safety procedures, "
+                "use required PPE, and keep the work area safe."
+            )
+
+        elif "safety" in question_lower:
+
+            answer = (
+                "Workers should follow the safety procedures "
+                "described in the industrial safety document."
+            )
+
         else:
 
             answer = (
-                "I found some related information in the industrial "
-                "document, but I could not generate a specific answer "
+                "I found related information in the document, "
+                "but I could not generate a specific answer "
                 "for this question."
             )
 
@@ -229,7 +244,3 @@ if st.button("Get Answer"):
 
         st.subheader("🤖 Chatbot Answer")
         st.write(answer)
-
-    else:
-
-        st.warning("Please enter a question.")
